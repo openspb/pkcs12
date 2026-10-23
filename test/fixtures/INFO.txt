@@ -1,0 +1,330 @@
+== ./java_default.p12
+MAC: sha256, Iteration 10000
+MAC length: 32, salt length: 20
+PKCS7 Data
+Shrouded Keybag: PBES2, PBKDF2, AES-256-CBC, Iteration 10000, PRF hmacWithSHA256
+PKCS7 Encrypted data: PBES2, PBKDF2, AES-256-CBC, Iteration 10000, PRF hmacWithSHA256
+Certificate bag
+Certificate bag
+== ./java_legacy.p12
+MAC: sha1, Iteration 100000
+MAC length: 20, salt length: 20
+PKCS7 Data
+Shrouded Keybag: pbeWithSHA1And3-KeyTripleDES-CBC, Iteration 50000
+PKCS7 Encrypted data: pbeWithSHA1And40BitRC2-CBC, Iteration 50000
+Certificate bag
+Certificate bag
+== ./java_secret.p12
+MAC: sha256, Iteration 10000
+MAC length: 32, salt length: 20
+PKCS7 Data
+Secret bag
+Bag Type: pkcs8ShroudedKeyBag
+Bag Value: Bag Attributes
+30 81 9A 30 66 06 09 2A 86 48 86 F7 0D 01 05 0D 30 59 30 38 06 09 2A 86 48 86 F7 0D 01 05 0C 30 2B 04 14 DB 5D 2D DA A3 2D FD 67 CD 7F 91 56 FA 8F 5B 40 3C 08 90 B9 02 02 27 10 02 01 20 30 0C 06 08 2A 86 48 86 F7 0D 02 09 05 00 30 1D 06 09 60 86 48 01 65 03 04 01 2A 04 10 94 2A 21 61 BB 8A C1 89 19 E2 25 52 57 03 60 6F 04 30 59 04 B4 B3 24 67 B6 F7 8B C9 9A 60 B3 29 29 67 C1 B2 7C 6E B9 10 EE B9 D9 15 BF B0 24 11 B8 CA 07 B5 E3 7F FF 23 1F BD 3B 20 09 EE 2D 5E C4 00 
+== ./java_truststore.p12
+Warning: MAC is absent!
+PKCS7 Data
+Certificate bag
+== ./java_two_keys.p12
+MAC: sha256, Iteration 10000
+MAC length: 32, salt length: 20
+PKCS7 Data
+Shrouded Keybag: PBES2, PBKDF2, AES-256-CBC, Iteration 10000, PRF hmacWithSHA256
+Shrouded Keybag: PBES2, PBKDF2, AES-256-CBC, Iteration 10000, PRF hmacWithSHA256
+PKCS7 Encrypted data: PBES2, PBKDF2, AES-256-CBC, Iteration 10000, PRF hmacWithSHA256
+Certificate bag
+Certificate bag
+Certificate bag
+Certificate bag
+== ./lre_default.p12
+MAC: sha1, Iteration 2048
+MAC length: 20, salt length: 8
+PKCS7 Encrypted data: pbeWithSHA1And40BitRC2-CBC, Iteration 2048
+Certificate bag
+Certificate bag
+PKCS7 Data
+Shrouded Keybag: pbeWithSHA1And3-KeyTripleDES-CBC, Iteration 2048
+== ./lre_empty.p12
+MAC: sha1, Iteration 2048
+MAC length: 20, salt length: 8
+PKCS7 Encrypted data: pbeWithSHA1And40BitRC2-CBC, Iteration 2048
+Certificate bag
+Certificate bag
+PKCS7 Data
+Shrouded Keybag: pbeWithSHA1And3-KeyTripleDES-CBC, Iteration 2048
+== ./lre_utf8.p12
+MAC: sha1, Iteration 2048
+MAC length: 20, salt length: 8
+Warning: using broken algorithm
+PKCS7 Encrypted data: pbeWithSHA1And40BitRC2-CBC, Iteration 2048
+Certificate bag
+Certificate bag
+PKCS7 Data
+Shrouded Keybag: pbeWithSHA1And3-KeyTripleDES-CBC, Iteration 2048
+== ./o11_aes.p12
+MAC: sha256, Iteration 2048
+MAC length: 32, salt length: 8
+PKCS7 Encrypted data: PBES2, PBKDF2, AES-256-CBC, Iteration 2048, PRF hmacWithSHA256
+Certificate bag
+Certificate bag
+PKCS7 Data
+Shrouded Keybag: PBES2, PBKDF2, AES-256-CBC, Iteration 2048, PRF hmacWithSHA256
+== ./o11_default.p12
+MAC: sha1, Iteration 2048
+MAC length: 20, salt length: 8
+PKCS7 Encrypted data: pbeWithSHA1And40BitRC2-CBC, Iteration 2048
+Certificate bag
+Certificate bag
+PKCS7 Data
+Shrouded Keybag: pbeWithSHA1And3-KeyTripleDES-CBC, Iteration 2048
+== ./o11_empty.p12
+MAC: sha1, Iteration 2048
+MAC length: 20, salt length: 8
+PKCS7 Encrypted data: pbeWithSHA1And40BitRC2-CBC, Iteration 2048
+Certificate bag
+Certificate bag
+PKCS7 Data
+Shrouded Keybag: pbeWithSHA1And3-KeyTripleDES-CBC, Iteration 2048
+== ./o11_utf8.p12
+MAC: sha1, Iteration 2048
+MAC length: 20, salt length: 8
+PKCS7 Encrypted data: pbeWithSHA1And40BitRC2-CBC, Iteration 2048
+Certificate bag
+Certificate bag
+PKCS7 Data
+Shrouded Keybag: pbeWithSHA1And3-KeyTripleDES-CBC, Iteration 2048
+== ./o3_3des.p12
+MAC: sha1, Iteration 2048
+MAC length: 20, salt length: 16
+PKCS7 Encrypted data: pbeWithSHA1And3-KeyTripleDES-CBC, Iteration 2048
+Certificate bag
+Certificate bag
+PKCS7 Data
+Shrouded Keybag: pbeWithSHA1And3-KeyTripleDES-CBC, Iteration 2048
+== ./o3_aes128_sha512.p12
+MAC: sha512, Iteration 2048
+MAC length: 64, salt length: 16
+PKCS7 Encrypted data: PBES2, PBKDF2, AES-128-CBC, Iteration 2048, PRF hmacWithSHA256
+Certificate bag
+Certificate bag
+PKCS7 Data
+Shrouded Keybag: PBES2, PBKDF2, AES-128-CBC, Iteration 2048, PRF hmacWithSHA256
+== ./o3_aes192_sha384.p12
+MAC: sha384, Iteration 2048
+MAC length: 48, salt length: 16
+PKCS7 Encrypted data: PBES2, PBKDF2, AES-192-CBC, Iteration 2048, PRF hmacWithSHA256
+Certificate bag
+Certificate bag
+PKCS7 Data
+Shrouded Keybag: PBES2, PBKDF2, AES-192-CBC, Iteration 2048, PRF hmacWithSHA256
+== ./o3_bigiter.p12
+MAC: sha256, Iteration 3000000
+MAC length: 32, salt length: 16
+PKCS7 Encrypted data: PBES2, PBKDF2, AES-256-CBC, Iteration 3000000, PRF hmacWithSHA256
+Certificate bag
+Certificate bag
+PKCS7 Data
+Shrouded Keybag: PBES2, PBKDF2, AES-256-CBC, Iteration 3000000, PRF hmacWithSHA256
+== ./o3_certs_only.p12
+MAC: sha256, Iteration 2048
+MAC length: 32, salt length: 16
+PKCS7 Encrypted data: PBES2, PBKDF2, AES-256-CBC, Iteration 2048, PRF hmacWithSHA256
+Certificate bag
+Certificate bag
+== ./o3_default.p12
+MAC: sha256, Iteration 2048
+MAC length: 32, salt length: 16
+PKCS7 Encrypted data: PBES2, PBKDF2, AES-256-CBC, Iteration 2048, PRF hmacWithSHA256
+Certificate bag
+Certificate bag
+PKCS7 Data
+Shrouded Keybag: PBES2, PBKDF2, AES-256-CBC, Iteration 2048, PRF hmacWithSHA256
+== ./o3_ec.p12
+MAC: sha256, Iteration 2048
+MAC length: 32, salt length: 16
+PKCS7 Encrypted data: PBES2, PBKDF2, AES-256-CBC, Iteration 2048, PRF hmacWithSHA256
+Certificate bag
+Certificate bag
+PKCS7 Data
+Shrouded Keybag: PBES2, PBKDF2, AES-256-CBC, Iteration 2048, PRF hmacWithSHA256
+== ./o3_ec_legacy.p12
+MAC: sha1, Iteration 2048
+MAC length: 20, salt length: 16
+PKCS7 Encrypted data: pbeWithSHA1And40BitRC2-CBC, Iteration 2048
+Certificate bag
+Certificate bag
+PKCS7 Data
+Shrouded Keybag: pbeWithSHA1And3-KeyTripleDES-CBC, Iteration 2048
+== ./o3_empty.p12
+MAC: sha256, Iteration 2048
+MAC length: 32, salt length: 16
+PKCS7 Encrypted data: PBES2, PBKDF2, AES-256-CBC, Iteration 2048, PRF hmacWithSHA256
+Certificate bag
+Certificate bag
+PKCS7 Data
+Shrouded Keybag: PBES2, PBKDF2, AES-256-CBC, Iteration 2048, PRF hmacWithSHA256
+== ./o3_empty_legacy.p12
+MAC: sha1, Iteration 2048
+MAC length: 20, salt length: 16
+PKCS7 Encrypted data: pbeWithSHA1And40BitRC2-CBC, Iteration 2048
+Certificate bag
+Certificate bag
+PKCS7 Data
+Shrouded Keybag: pbeWithSHA1And3-KeyTripleDES-CBC, Iteration 2048
+== ./o3_iter100k.p12
+MAC: sha256, Iteration 100000
+MAC length: 32, salt length: 16
+PKCS7 Encrypted data: PBES2, PBKDF2, AES-256-CBC, Iteration 100000, PRF hmacWithSHA256
+Certificate bag
+Certificate bag
+PKCS7 Data
+Shrouded Keybag: PBES2, PBKDF2, AES-256-CBC, Iteration 100000, PRF hmacWithSHA256
+== ./o3_legacy.p12
+MAC: sha1, Iteration 2048
+MAC length: 20, salt length: 16
+PKCS7 Encrypted data: pbeWithSHA1And40BitRC2-CBC, Iteration 2048
+Certificate bag
+Certificate bag
+PKCS7 Data
+Shrouded Keybag: pbeWithSHA1And3-KeyTripleDES-CBC, Iteration 2048
+== ./o3_legacy_100k.p12
+MAC: sha1, Iteration 100000
+MAC length: 20, salt length: 16
+PKCS7 Encrypted data: pbeWithSHA1And40BitRC2-CBC, Iteration 100000
+Certificate bag
+Certificate bag
+PKCS7 Data
+Shrouded Keybag: pbeWithSHA1And3-KeyTripleDES-CBC, Iteration 100000
+== ./o3_names.p12
+MAC: sha256, Iteration 2048
+MAC length: 32, salt length: 16
+PKCS7 Encrypted data: PBES2, PBKDF2, AES-256-CBC, Iteration 2048, PRF hmacWithSHA256
+Certificate bag
+Certificate bag
+PKCS7 Data
+Shrouded Keybag: PBES2, PBKDF2, AES-256-CBC, Iteration 2048, PRF hmacWithSHA256
+== ./o3_noenc.p12
+MAC: sha256, Iteration 2048
+MAC length: 32, salt length: 16
+PKCS7 Data
+Certificate bag
+Certificate bag
+PKCS7 Data
+Key bag
+== ./o3_noenc_nomac.p12
+Warning: MAC is absent!
+PKCS7 Data
+Certificate bag
+Certificate bag
+PKCS7 Data
+Key bag
+== ./o3_noiter.p12
+MAC: sha1, Iteration 1
+MAC length: 20, salt length: 16
+PKCS7 Encrypted data: pbeWithSHA1And40BitRC2-CBC, Iteration 1
+Certificate bag
+Certificate bag
+PKCS7 Data
+Shrouded Keybag: pbeWithSHA1And3-KeyTripleDES-CBC, Iteration 1
+== ./o3_nomac.p12
+Warning: MAC is absent!
+PKCS7 Data
+Certificate bag
+Certificate bag
+PKCS7 Data
+Shrouded Keybag: PBES2, PBKDF2, AES-256-CBC, Iteration 2048, PRF hmacWithSHA256
+== ./o3_pbes2_3des.p12
+MAC: sha256, Iteration 2048
+MAC length: 32, salt length: 16
+PKCS7 Encrypted data: PBES2, PBKDF2, DES-EDE3-CBC, Iteration 2048, PRF hmacWithSHA256
+Certificate bag
+Certificate bag
+PKCS7 Data
+Shrouded Keybag: PBES2, PBKDF2, DES-EDE3-CBC, Iteration 2048, PRF hmacWithSHA256
+== ./o3_pbmac1.p12
+MAC: PBMAC1 using PBKDF2, Iteration 2048
+Key length: 32, Salt length: 16
+PBKDF2 PRF: hmacWithSHA256
+PKCS7 Encrypted data: PBES2, PBKDF2, AES-256-CBC, Iteration 2048, PRF hmacWithSHA256
+Certificate bag
+Certificate bag
+PKCS7 Data
+Shrouded Keybag: PBES2, PBKDF2, AES-256-CBC, Iteration 2048, PRF hmacWithSHA256
+== ./o3_pbmac1_sha512.p12
+MAC: PBMAC1 using PBKDF2, Iteration 2048
+Key length: 64, Salt length: 16
+PBKDF2 PRF: hmacWithSHA512
+PKCS7 Encrypted data: PBES2, PBKDF2, AES-256-CBC, Iteration 2048, PRF hmacWithSHA256
+Certificate bag
+Certificate bag
+PKCS7 Data
+Shrouded Keybag: PBES2, PBKDF2, AES-256-CBC, Iteration 2048, PRF hmacWithSHA256
+== ./o3_rc2_128.p12
+MAC: sha1, Iteration 2048
+MAC length: 20, salt length: 16
+PKCS7 Encrypted data: pbeWithSHA1And128BitRC2-CBC, Iteration 2048
+Certificate bag
+Certificate bag
+PKCS7 Data
+Shrouded Keybag: pbeWithSHA1And2-KeyTripleDES-CBC, Iteration 2048
+== ./o3_rc4.p12
+MAC: sha1, Iteration 2048
+MAC length: 20, salt length: 16
+PKCS7 Encrypted data: pbeWithSHA1And40BitRC4, Iteration 2048
+Certificate bag
+Certificate bag
+PKCS7 Data
+Shrouded Keybag: pbeWithSHA1And128BitRC4, Iteration 2048
+== ./o3_utf8.p12
+MAC: sha256, Iteration 2048
+MAC length: 32, salt length: 16
+PKCS7 Encrypted data: PBES2, PBKDF2, AES-256-CBC, Iteration 2048, PRF hmacWithSHA256
+Certificate bag
+Certificate bag
+PKCS7 Data
+Shrouded Keybag: PBES2, PBKDF2, AES-256-CBC, Iteration 2048, PRF hmacWithSHA256
+== ./o3_utf8_legacy.p12
+MAC: sha1, Iteration 2048
+MAC length: 20, salt length: 16
+PKCS7 Encrypted data: pbeWithSHA1And40BitRC2-CBC, Iteration 2048
+Certificate bag
+Certificate bag
+PKCS7 Data
+Shrouded Keybag: pbeWithSHA1And3-KeyTripleDES-CBC, Iteration 2048
+== ./py_3des_sha1.p12
+MAC: sha1, Iteration 2048
+MAC length: 20, salt length: 8
+PKCS7 Encrypted data: pbeWithSHA1And3-KeyTripleDES-CBC, Iteration 2000
+Certificate bag
+Certificate bag
+PKCS7 Data
+Shrouded Keybag: pbeWithSHA1And3-KeyTripleDES-CBC, Iteration 2000
+== ./py_aes_sha256.p12
+MAC: sha256, Iteration 2048
+MAC length: 32, salt length: 8
+PKCS7 Encrypted data: PBES2, PBKDF2, AES-256-CBC, Iteration 10000, PRF hmacWithSHA256
+Certificate bag
+Certificate bag
+PKCS7 Data
+Shrouded Keybag: PBES2, PBKDF2, AES-256-CBC, Iteration 10000, PRF hmacWithSHA256
+== ./py_best.p12
+MAC: sha256, Iteration 2048
+MAC length: 32, salt length: 8
+PKCS7 Encrypted data: PBES2, PBKDF2, AES-256-CBC, Iteration 20000, PRF hmacWithSHA256
+Certificate bag
+Certificate bag
+PKCS7 Data
+Shrouded Keybag: PBES2, PBKDF2, AES-256-CBC, Iteration 20000, PRF hmacWithSHA256
+== ./py_noenc.p12
+MAC: sha256, Iteration 2048
+MAC length: 32, salt length: 8
+Mac verify error: invalid password?
+== ./py_utf8.p12
+MAC: sha256, Iteration 2048
+MAC length: 32, salt length: 8
+PKCS7 Encrypted data: PBES2, PBKDF2, AES-256-CBC, Iteration 20000, PRF hmacWithSHA256
+Certificate bag
+Certificate bag
+PKCS7 Data
+Shrouded Keybag: PBES2, PBKDF2, AES-256-CBC, Iteration 20000, PRF hmacWithSHA256

@@ -1,0 +1,10 @@
+# Mix
+/_build/
+/cover/
+/deps/
+/doc/
+/.fetch
+erl_crash.dump
+*.ez
+pkcs12-*.tar
+/tmp/

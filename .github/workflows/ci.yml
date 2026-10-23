@@ -1,0 +1,106 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Elixir ${{ matrix.elixir }} / OTP ${{ matrix.otp }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Oldest supported pair, then the newest OTP of each Elixir line.
+          - { elixir: "1.16", otp: "26" }
+          - { elixir: "1.18", otp: "27" }
+          - { elixir: "1.20", otp: "28" }
+          - { elixir: "1.20", otp: "29" }
+    env:
+      MIX_ENV: test
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: erlef/setup-beam@v1
+        id: beam
+        with:
+          elixir-version: ${{ matrix.elixir }}
+          otp-version: ${{ matrix.otp }}
+
+      - uses: actions/cache@v6
+        with:
+          path: |
+            deps
+            _build
+          key: test-${{ steps.beam.outputs.otp-version }}-${{ steps.beam.outputs.elixir-version }}-${{ hashFiles('mix.lock') }}
+
+      - run: mix deps.get
+      - run: mix compile --warnings-as-errors
+      - run: mix test
+        env:
+          FUZZ_ROUNDS: "1000"
+
+  # The same suite on an OpenSSL 3 whose "legacy" provider cannot be loaded,
+  # as on many systems: RC2 and DES are gone from :crypto, and the legacy
+  # files must still open.
+  no-legacy:
+    name: OpenSSL 3 without the legacy provider
+    runs-on: ubuntu-24.04
+    container: hexpm/elixir:1.20.4-erlang-29.1.2-alpine-3.24.2
+    env:
+      MIX_ENV: test
+      PKCS12_EXPECT_NO_LEGACY: "1"
+    steps:
+      - run: apk add --no-cache git
+      - uses: actions/checkout@v5
+      - name: Hide the OpenSSL providers
+        run: |
+          mkdir -p "$RUNNER_TEMP/no-modules"
+          echo "OPENSSL_MODULES=$RUNNER_TEMP/no-modules" >> "$GITHUB_ENV"
+      - name: Show what :crypto has
+        run: |
+          elixir -e '
+            [{_, _, version}] = :crypto.info_lib()
+            ciphers = :crypto.supports(:ciphers)
+            IO.puts("#{version}: rc2_cbc #{:rc2_cbc in ciphers}, rc4 #{:rc4 in ciphers}")
+            if :rc2_cbc in ciphers, do: System.halt(1)
+          '
+      - run: mix local.hex --force && mix local.rebar --force
+      - run: mix deps.get
+      - run: mix test
+
+  lint:
+    name: Format, Credo, Dialyzer, docs
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: erlef/setup-beam@v1
+        id: beam
+        with:
+          elixir-version: "1.20"
+          otp-version: "29"
+
+      - uses: actions/cache@v6
+        with:
+          path: |
+            deps
+            _build
+          key: lint-${{ steps.beam.outputs.otp-version }}-${{ steps.beam.outputs.elixir-version }}-${{ hashFiles('mix.lock') }}
+
+      - run: mix deps.get
+      - run: mix deps.unlock --check-unused
+      - run: mix format --check-formatted
+      - run: mix compile --warnings-as-errors
+      - run: mix credo --strict
+      - run: mix dialyzer --format github
+      - run: mix docs --warnings-as-errors
