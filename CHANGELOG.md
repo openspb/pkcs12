@@ -4,6 +4,20 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [0.1.1] - 2026-10-23
+
+### Fixed
+
+- The interop tests skip a Python `cryptography` older than 36, which has no
+  `load_pkcs12`, instead of failing.
+
+### Documentation
+
+- `decode/3`: `nil` is the same as the empty password, and what that means
+  for a password read from an environment variable that is not set.
+- `decode/3` and the README: the key derivation is paid on every call, so a
+  file is best decoded once and the result kept.
+
 ## [0.1.0] - 2026-10-23
 
 ### Added
@@ -24,4 +38,5 @@ All notable changes to this project are documented here. The format follows
   `:legacy` profile, 3DES and RC2-40 with a SHA-1 MAC. Options choose each
   algorithm, PBMAC1, the iteration count, `friendlyName` and `localKeyId`.
 
+[0.1.1]: https://github.com/openspb/pkcs12/releases/tag/v0.1.1
 [0.1.0]: https://github.com/openspb/pkcs12/releases/tag/v0.1.0
