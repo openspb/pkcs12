@@ -1,13 +1,15 @@
 defmodule PKCS12 do
   @moduledoc """
-  Reads PKCS#12 files (`.pfx`, `.p12`): the private key, its certificate and
-  the rest of the chain.
+  Reads and writes PKCS#12 files (`.pfx`, `.p12`): the private key, its
+  certificate and the rest of the chain.
 
       {:ok, p12} = PKCS12.decode(File.read!("me.pfx"), "password")
 
       p12.private_key      # PrivateKeyInfo (PKCS#8), in DER
       p12.certificate      # the certificate of that key, in DER
       p12.ca_certificates  # the other certificates, in DER, in file order
+
+      {:ok, pfx} = PKCS12.encode(p12, "new password")
 
   Everything is done in Elixir on top of `:crypto` and `:public_key`, with no
   NIF of its own and no call to the `openssl` binary. RC2, which the legacy
@@ -34,9 +36,28 @@ defmodule PKCS12 do
       # PEM files, for tools that want them
       pem = :public_key.pem_encode([{:PrivateKeyInfo, p12.private_key, :not_encrypted}])
 
+  ## Writing
+
+  `encode/3` takes the same fields, so PEM files become a `.pfx` for the
+  systems and tools that import one:
+
+      [key] = :public_key.pem_decode(File.read!("key.pem"))
+      [cert | chain] = for {:Certificate, der, _} <- :public_key.pem_decode(File.read!("chain.pem")), do: der
+
+      {:ok, pfx} =
+        PKCS12.encode(
+          %{private_key: :public_key.pem_entry_decode(key), certificate: cert, ca_certificates: chain},
+          "password",
+          friendly_name: "My key"
+        )
+
+  A file in an old format can be read and written again in the modern one:
+
+      pfx |> PKCS12.decode!(password) |> PKCS12.encode!(password)
+
   ## Algorithms
 
-  Encryption:
+  Reading, encryption:
 
     * PBES2 (PBKDF2 with HMAC-SHA-1/224/256/384/512) with AES-128/192/256-CBC,
       3DES-CBC or DES-CBC, the default of OpenSSL 3, Java and other recent
@@ -47,22 +68,26 @@ defmodule PKCS12 do
     * the other PKCS#12 ciphers: 2-key 3DES, RC2-128, and RC4-40/128 when
       `:crypto` has RC4.
 
-  Integrity: the classic MAC with SHA-1/224/256/384/512, and PBMAC1
+  Reading, integrity: the classic MAC with SHA-1/224/256/384/512, and PBMAC1
   (RFC 9879). Files without a MAC are accepted; `:info` tells.
 
+  Writing: PBES2 with AES and PBKDF2-HMAC-SHA-256 by default, the legacy
+  combination when asked, and any of the MACs above. See `encode/3`.
+
   Not supported: files signed with, or encrypted to, a public key instead of
-  a password (both are very rare), and writing PKCS#12.
+  a password (both are very rare).
 
   ## Passwords
 
   The password is a UTF-8 binary, or `nil` for none. Some generators encode
   passwords in other ways: with each byte as a character (non-ASCII
   passwords in older OpenSSL versions and LibreSSL), or the empty password
-  as no bytes at all. The library tries those forms too, and the MAC decides
-  which is right; `:info` tells which one matched.
+  as no bytes at all. When reading, the library tries those forms too, and
+  the MAC decides which is right; `:info` tells which one matched. When
+  writing, it uses the standard forms only.
   """
 
-  alias PKCS12.{Bag, Decoder, Error}
+  alias PKCS12.{Bag, Decoder, Encoder, Error, Password}
 
   @derive {Inspect, except: [:private_key]}
   defstruct private_key: nil, certificate: nil, ca_certificates: [], bags: [], info: %{}
@@ -136,12 +161,55 @@ defmodule PKCS12 do
   @typedoc "A hash algorithm, named as in `:crypto`."
   @type hash :: :sha | :sha224 | :sha256 | :sha384 | :sha512
 
-  @type option ::
+  @type decode_option ::
           {:max_iterations, pos_integer()}
           | {:max_total_iterations, pos_integer()}
           | {:verify_mac, boolean()}
 
+  @typedoc """
+  What `encode/3` writes: a `t:t/0`, or a map with any of its first three
+  keys. See `encode/3`.
+  """
+  @type input ::
+          t()
+          | %{
+              optional(:private_key) => binary() | tuple() | nil,
+              optional(:certificate) => binary() | nil,
+              optional(:ca_certificates) => [binary()] | nil
+            }
+
+  @typedoc "A cipher that `encode/3` writes."
+  @type cipher :: :aes_256_cbc | :aes_192_cbc | :aes_128_cbc | :des_ede3_cbc | :rc2_40_cbc
+
+  @type encode_option ::
+          {:profile, :modern | :legacy}
+          | {:key_encryption, cipher() | :none}
+          | {:certificate_encryption, cipher() | :none}
+          | {:mac, hash() | :pbmac1 | :none}
+          | {:iterations, pos_integer()}
+          | {:friendly_name, String.t()}
+          | {:local_key_id, binary()}
+
   @default_max_iterations 1_000_000
+
+  @profiles %{
+    modern: %{
+      key_encryption: :aes_256_cbc,
+      certificate_encryption: :aes_256_cbc,
+      mac: :sha256,
+      iterations: 100_000
+    },
+    legacy: %{
+      key_encryption: :des_ede3_cbc,
+      certificate_encryption: :rc2_40_cbc,
+      mac: :sha,
+      iterations: 2048
+    }
+  }
+
+  @key_ciphers [:aes_256_cbc, :aes_192_cbc, :aes_128_cbc, :des_ede3_cbc, :none]
+  @certificate_ciphers @key_ciphers ++ [:rc2_40_cbc]
+  @macs [:sha256, :sha384, :sha512, :sha224, :sha, :pbmac1, :none]
 
   @doc """
   Decodes a PKCS#12 file.
@@ -175,7 +243,7 @@ defmodule PKCS12 do
   Returns `{:error, %PKCS12.Error{}}`; see `PKCS12.Error` for the reasons.
   A wrong password gives `:invalid_password`.
   """
-  @spec decode(binary(), String.t() | nil, [option()]) :: {:ok, t()} | {:error, Error.t()}
+  @spec decode(binary(), String.t() | nil, [decode_option()]) :: {:ok, t()} | {:error, Error.t()}
   def decode(pfx, password, opts \\ []) do
     # The arguments are checked here, with no guard in the function head, so
     # that a FunctionClauseError never prints the password.
@@ -191,13 +259,175 @@ defmodule PKCS12 do
   @doc """
   Like `decode/3`, but returns the result or raises `PKCS12.Error`.
   """
-  @spec decode!(binary(), String.t() | nil, [option()]) :: t()
+  @spec decode!(binary(), String.t() | nil, [decode_option()]) :: t()
   def decode!(pfx, password, opts \\ []) do
     case decode(pfx, password, opts) do
       {:ok, p12} -> p12
       {:error, error} -> raise error
     end
   end
+
+  @doc """
+  Encodes a PKCS#12 file, in DER.
+
+  `p12` is a `t:t/0`, such as one that `decode/3` returns, or a map with
+  some of the same keys:
+
+    * `:private_key` - a PrivateKeyInfo (PKCS#8) in DER, or a key record of
+      `:public_key`, such as `{:RSAPrivateKey, ...}` or `{:ECPrivateKey, ...}`.
+    * `:certificate` - the certificate of that key, in DER.
+    * `:ca_certificates` - other certificates, in DER, usually the rest of
+      the chain. They are written in this order, after `:certificate`.
+
+  Any of them can be missing: a file of certificates alone, for example, is
+  a trust store. Other keys, such as `:bags` and `:info`, are ignored, so
+  only the first key of a decoded file and its certificates are written
+  again. The library checks the shape of the key and of the certificates,
+  not that the certificate belongs to the key.
+
+  `password` is a UTF-8 binary, or `nil`, which is the same as `""`.
+
+  The salts and IVs come from `:crypto.strong_rand_bytes/1`, so no two
+  results are the same.
+
+  ## Options
+
+    * `:profile` - the values of the options below when they are not given:
+      * `:modern` (default) - AES-256-CBC with PBKDF2-HMAC-SHA-256 for the
+        key and for the certificates, and a SHA-256 MAC, all with 100,000
+        iterations. It is the format that OpenSSL 3 and Java write by
+        default, with a higher count than either.
+      * `:legacy` - pbeWithSHAAnd3-KeyTripleDES-CBC for the key,
+        pbeWithSHAAnd40BitRC2-CBC for the certificates and a SHA-1 MAC, all
+        with 2,048 iterations: the format of OpenSSL 1.x, for importers
+        that know nothing newer. It is weak; see the
+        [security notes](SECURITY.md).
+    * `:key_encryption` - `:aes_256_cbc`, `:aes_192_cbc` or `:aes_128_cbc`
+      (PBES2 with PBKDF2-HMAC-SHA-256), `:des_ede3_cbc`
+      (pbeWithSHAAnd3-KeyTripleDES-CBC), or `:none`.
+    * `:certificate_encryption` - the same choices, and `:rc2_40_cbc`
+      (pbeWithSHAAnd40BitRC2-CBC). With `:none`, anyone can read the
+      certificates, as they could anyway from the certificates themselves.
+    * `:mac` - `:sha256`, `:sha384`, `:sha512`, `:sha224` or `:sha` (the
+      classic MAC with that hash), `:pbmac1` (RFC 9879, with
+      PBKDF2-HMAC-SHA-256 and HMAC-SHA-256, which OpenSSL reads from 3.4 on),
+      or `:none`.
+    * `:iterations` - the iteration count of every key derivation. A
+      password is as hard to guess as the cheapest derivation that checks
+      it, so they all take the same. The cost grows with the count when
+      writing and when reading; `decode/3` reads up to 1,000,000 by
+      default, and other readers have limits of their own.
+    * `:friendly_name` - a name for the key and its certificate, which
+      importers show; Java uses it as the alias.
+    * `:local_key_id` - the localKeyId of the key and its certificate, which
+      readers use to pair them. Default: the SHA-1 hash of the certificate,
+      when there are both.
+
+  An option given as `nil` takes the value of the profile.
+
+  ## Errors
+
+  Returns `{:error, %PKCS12.Error{}}` with `{:invalid_input, field}` when a
+  field of `p12` is not what it should be, or `{:not_available, cipher}`
+  when `:crypto` refuses a cipher, as a FIPS provider may do with
+  `:des_ede3_cbc`. Raises `ArgumentError` for invalid options, or for a
+  password that is not UTF-8.
+  """
+  @spec encode(input(), String.t() | nil, [encode_option()]) ::
+          {:ok, binary()} | {:error, Error.t()}
+  def encode(p12, password, opts \\ []) do
+    # As in decode/3, checked here so that no error prints the password.
+    check!(is_map(p12), "expected a %PKCS12{} or a map with its fields")
+    check!(is_binary(password) or is_nil(password), "expected the password as a binary or nil")
+
+    password =
+      case Password.standard(password || "") do
+        {:ok, password} -> password
+        :error -> raise ArgumentError, "expected the password as UTF-8"
+      end
+
+    case Encoder.encode(p12, password, encode_options(opts)) do
+      {:ok, pfx} -> {:ok, pfx}
+      {:error, reason} -> {:error, %Error{reason: reason}}
+    end
+  end
+
+  @doc """
+  Like `encode/3`, but returns the file or raises `PKCS12.Error`.
+  """
+  @spec encode!(input(), String.t() | nil, [encode_option()]) :: binary()
+  def encode!(p12, password, opts \\ []) do
+    case encode(p12, password, opts) do
+      {:ok, pfx} -> pfx
+      {:error, error} -> raise error
+    end
+  end
+
+  defp encode_options(opts) do
+    opts =
+      Keyword.validate!(opts,
+        profile: :modern,
+        key_encryption: nil,
+        certificate_encryption: nil,
+        mac: nil,
+        iterations: nil,
+        friendly_name: nil,
+        local_key_id: nil
+      )
+
+    profile = opts[:profile]
+
+    check!(
+      is_map_key(@profiles, profile),
+      ":profile must be :modern or :legacy, got: #{inspect(profile)}"
+    )
+
+    defaults = Map.fetch!(@profiles, profile)
+    iterations = default(opts[:iterations], defaults.iterations)
+
+    check!(
+      pos_integer?(iterations),
+      ":iterations must be a positive integer, got: #{inspect(iterations)}"
+    )
+
+    name = opts[:friendly_name]
+
+    check!(
+      is_nil(name) or (is_binary(name) and String.valid?(name)),
+      ":friendly_name must be a UTF-8 string, got: #{inspect(name)}"
+    )
+
+    id = opts[:local_key_id]
+
+    check!(
+      is_nil(id) or (is_binary(id) and id != ""),
+      ":local_key_id must be a non-empty binary, got: #{inspect(id)}"
+    )
+
+    %{
+      key_encryption: choice!(opts, :key_encryption, defaults, @key_ciphers),
+      certificate_encryption:
+        choice!(opts, :certificate_encryption, defaults, @certificate_ciphers),
+      mac: choice!(opts, :mac, defaults, @macs),
+      iterations: iterations,
+      friendly_name: name,
+      local_key_id: id
+    }
+  end
+
+  defp choice!(opts, name, defaults, choices) do
+    value = default(opts[name], Map.fetch!(defaults, name))
+
+    check!(
+      value in choices,
+      ":#{name} must be one of #{inspect(choices)}, got: #{inspect(value)}"
+    )
+
+    value
+  end
+
+  defp default(nil, default), do: default
+  defp default(value, _default), do: value
 
   defp options(opts) do
     opts =

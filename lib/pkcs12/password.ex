@@ -42,6 +42,19 @@ defmodule PKCS12.Password do
     end
   end
 
+  @doc """
+  The form of RFC 7292 alone, for writing. `:error` if the password is not
+  UTF-8.
+  """
+  @spec standard(binary()) ::
+          {:ok, %__MODULE__{encoding: :unicode, bmp: (-> binary()), raw: (-> binary())}} | :error
+  def standard(password) do
+    case candidates(password) do
+      [%__MODULE__{encoding: :unicode} = unicode | _] -> {:ok, unicode}
+      _ -> :error
+    end
+  end
+
   @spec bmp(t()) :: binary()
   def bmp(%__MODULE__{bmp: bmp}), do: bmp.()
 

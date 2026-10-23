@@ -1,9 +1,10 @@
 defmodule PKCS12.Error do
   @moduledoc """
-  Why a PKCS#12 file could not be read.
+  Why a PKCS#12 file could not be read or written.
 
-  `PKCS12.decode/3` returns it as `{:error, %PKCS12.Error{}}`, and
-  `PKCS12.decode!/3` raises it. Match on `:reason`:
+  `PKCS12.decode/3` and `PKCS12.encode/3` return it as
+  `{:error, %PKCS12.Error{}}`, and `PKCS12.decode!/3` and `PKCS12.encode!/3`
+  raise it. Match on `:reason`:
 
     * `:malformed` - not a valid PKCS#12 structure.
     * `:invalid_password` - the MAC does not match, or, in a file without a
@@ -25,6 +26,9 @@ defmodule PKCS12.Error do
       the work done or due when the limit was reached.
     * `{:unsupported_mac_key_size, bytes}` - a PBMAC1 key size outside
       20..64 bytes.
+    * `{:invalid_input, field}` - when writing, `field` (`:private_key`,
+      `:certificate` or `:ca_certificates`) is not a key or certificates in
+      a form that `PKCS12.encode/3` takes.
 
   The error never carries the password or any key material.
   """
@@ -39,6 +43,7 @@ defmodule PKCS12.Error do
           | {:too_many_iterations, pos_integer()}
           | {:too_many_total_iterations, pos_integer()}
           | {:unsupported_mac_key_size, non_neg_integer()}
+          | {:invalid_input, :private_key | :certificate | :ca_certificates}
 
   @type t :: %__MODULE__{reason: reason()}
 
@@ -70,5 +75,14 @@ defmodule PKCS12.Error do
         "more than the :max_total_iterations option allows"
 
   defp describe({:unsupported_mac_key_size, n}), do: "unsupported PBMAC1 key size: #{n} bytes"
+
+  defp describe({:invalid_input, :private_key}),
+    do: "the private key is neither a PrivateKeyInfo (PKCS#8) in DER nor a key record"
+
+  defp describe({:invalid_input, :certificate}), do: "the certificate is not a certificate in DER"
+
+  defp describe({:invalid_input, :ca_certificates}),
+    do: "the CA certificates are not a list of certificates in DER"
+
   defp describe(other), do: "PKCS#12 error: #{inspect(other)}"
 end

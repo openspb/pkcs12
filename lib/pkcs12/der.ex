@@ -128,6 +128,15 @@ defmodule PKCS12.DER do
   def uint(_element), do: {:error, :malformed}
 
   @doc """
+  The INTEGER element of a non-negative integer.
+  """
+  @spec integer(non_neg_integer()) :: {0x02, binary()}
+  def integer(n) when is_integer(n) and n >= 0 do
+    bytes = :binary.encode_unsigned(n)
+    {0x02, if(:binary.first(bytes) >= 0x80, do: <<0, bytes::binary>>, else: bytes)}
+  end
+
+  @doc """
   Encodes an element in DER.
   """
   @spec encode(element()) :: binary()

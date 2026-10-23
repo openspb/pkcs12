@@ -1,7 +1,12 @@
 # PKCS12
 
-Reads PKCS#12 files (`.pfx`, `.p12`) in pure Elixir: the private key, its
-certificate and the rest of the chain, ready for `:ssl` and `:public_key`.
+[![Hex.pm](https://img.shields.io/hexpm/v/pkcs12.svg)](https://hex.pm/packages/pkcs12)
+[![Docs](https://img.shields.io/badge/hex-docs-blue.svg)](https://hexdocs.pm/pkcs12)
+[![CI](https://github.com/openspb/pkcs12/actions/workflows/ci.yml/badge.svg)](https://github.com/openspb/pkcs12/actions/workflows/ci.yml)
+
+Reads and writes PKCS#12 files (`.pfx`, `.p12`) in pure Elixir: the private
+key, its certificate and the rest of the chain, ready for `:ssl` and
+`:public_key`.
 
 * **No NIF and no `openssl` binary.** Everything runs on top of `:crypto` and
   `:public_key`, which come with OTP.
@@ -9,12 +14,15 @@ certificate and the rest of the chain, ready for `:ssl` and `:public_key`.
   recent tools, and the "legacy" RC2 + 3DES files that many tools still
   write. RC2 is built in, so legacy files open even where OpenSSL 3 has no
   "legacy" provider.
+* **Writes them too.** AES-256 and SHA-256 by default, the legacy format for
+  old importers, PBMAC1 on request. The test suite checks that OpenSSL,
+  LibreSSL, Python and Java read what it writes.
 * **Safe with untrusted input.** Bounded parsing, limits on the key
   derivation work, the MAC checked before anything is decrypted, and no key
   or password in `inspect/1` or in error messages.
 
 > **Status: v0.1.** The API is small and expected to stay, but may still
-> change before 1.0. The library reads PKCS#12; it does not write it.
+> change before 1.0.
 
 ## Installation
 
@@ -93,6 +101,34 @@ weak? = Enum.any?(p12.info.encryption, &(&1.cipher in [:rc2_40_cbc, :rc4_40, :rc
 
 See [SECURITY.md](SECURITY.md) for the threat model.
 
+### Writing
+
+`PKCS12.encode/3` takes the same fields that `decode/3` returns, so PEM files
+become a `.pfx` for the systems and tools that import one:
+
+```elixir
+[key] = :public_key.pem_decode(File.read!("key.pem"))
+[cert | chain] = for {:Certificate, der, _} <- :public_key.pem_decode(File.read!("chain.pem")), do: der
+
+{:ok, pfx} =
+  PKCS12.encode(
+    %{private_key: :public_key.pem_entry_decode(key), certificate: cert, ca_certificates: chain},
+    "password",
+    friendly_name: "My key"
+  )
+```
+
+The key can be a PrivateKeyInfo in DER or a key record of `:public_key`. A
+file in an old format can be read and written again in the modern one:
+
+```elixir
+pfx |> PKCS12.decode!(password) |> PKCS12.encode!(password)
+```
+
+For importers that know nothing newer, `profile: :legacy` writes the format
+of OpenSSL 1.x. The options set each algorithm and the iteration count on
+their own; see `PKCS12.encode/3`.
+
 ## What it reads
 
 | | |
@@ -104,18 +140,46 @@ See [SECURITY.md](SECURITY.md) for the threat model.
 | Passwords | UTF-8, as RFC 7292 says, and the forms some tools use instead (bytes as characters for non-ASCII passwords, the empty password as no bytes); the MAC decides which one is right |
 
 Not supported: files signed with, or encrypted to, a public key instead of a
-password (both are very rare), and writing PKCS#12.
+password (both are very rare).
 
 The test suite reads files written by OpenSSL 3, OpenSSL 1.1.1, LibreSSL,
 Python's `cryptography` and Java's `keytool`, in their default and legacy
 modes, and the test vectors of RFC 9879. CI runs it on OTP 26 to 29, and on
 an OpenSSL 3 without the legacy provider.
 
+## What it writes
+
+| | Key | Certificates | MAC | Iterations |
+|---|---|---|---|---|
+| `:modern` (default) | PBES2 AES-256-CBC, PBKDF2-HMAC-SHA-256 | the same | HMAC-SHA-256 | 100,000 |
+| `:legacy` | pbeWithSHAAnd3-KeyTripleDES-CBC | pbeWithSHAAnd40BitRC2-CBC | HMAC-SHA-1 | 2,048 |
+
+The modern profile is the format that OpenSSL 3 and Java write by default,
+with a higher iteration count than either: the count is what slows down
+guessing the password of a stolen file. Options choose AES-128/192, 3DES or
+no encryption for each part, any of the MACs above, PBMAC1 or no MAC, the
+iteration count, the `friendlyName` and the `localKeyId`. The output is DER,
+with random salts and IVs.
+
+The test suite has OpenSSL 3 and 1.1.1, LibreSSL, Python's `cryptography` and
+Java's `keytool` read the files it writes, with each profile and the main
+options. What they do not read:
+
+* PBMAC1: OpenSSL before 3.4, LibreSSL and Java 23.
+* A key that is not encrypted: Java skips it. Certificates without a key:
+  Java skips them too, unless they carry an attribute of its own, which the
+  library does not write.
+* Non-ASCII passwords: LibreSSL encodes them byte by byte, so it does not
+  open files from other tools that use one.
+* No MAC: OpenSSL 1.1.1 and LibreSSL open such files only with `-nomacver`.
+
 ## Performance
 
 The time is almost all key derivation, so it follows the iteration counts in
 the file. On an Apple M-series laptop, OTP 27 with OpenSSL 3.6
-(`mix run bench/decode.exs`):
+(`mix run bench/decode.exs` and `bench/encode.exs`).
+
+Reading:
 
 | File | Time |
 |---|---|
@@ -125,9 +189,20 @@ the file. On an Apple M-series laptop, OTP 27 with OpenSSL 3.6
 | Java legacy (MAC 100,000, 50,000) | 60 ms |
 | Wrong password (2,048) | 0.35 ms |
 
-PBKDF2 runs inside OpenSSL on a dirty scheduler. The PKCS#12 key derivation of
-the legacy files is an Elixir loop over `:crypto.hash/2`, which the BEAM
-preempts like any other code.
+Writing a key, its certificate and a CA certificate:
+
+| Options | Time |
+|---|---|
+| Default (modern, 100,000 iterations) | 39 ms |
+| Modern with 2,048 iterations, as OpenSSL 3 | 0.9 ms |
+| Modern with PBMAC1 (100,000) | 35 ms |
+| Legacy (2,048) | 2.6 ms |
+
+Reading a file of the default profile takes about as long as writing it.
+
+PBKDF2 runs inside OpenSSL on a dirty scheduler. The PKCS#12 key derivation,
+of the legacy ciphers and of the classic MAC, is an Elixir loop over
+`:crypto.hash/2`, which the BEAM preempts like any other code.
 
 ## Development
 
@@ -141,6 +216,10 @@ The files in `test/fixtures` are made by the project, with
 `test/support/gen_fixtures.sh` (OpenSSL 3 and 1.1.1, LibreSSL, Python and a
 JDK) and `test/support/extract_rfc9879.exs` (the RFC 9879 vectors). They are
 committed because CI does not have every generator.
+
+The interop tests (`mix test --only interop`) run the readers they find on
+the system and skip the others; `test/support/interop.ex` lists the
+variables that point to them. CI runs them with OpenSSL 3, Python and a JDK.
 
 ## References
 

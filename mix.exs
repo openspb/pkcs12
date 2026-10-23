@@ -61,7 +61,7 @@ defmodule PKCS12.MixProject do
   end
 
   defp description do
-    "PKCS#12 (.pfx, .p12) reader in pure Elixir: private key and certificate chain, " <>
+    "PKCS#12 (.pfx, .p12) reader and writer in pure Elixir: private key and certificate chain, " <>
       "legacy and modern algorithms, with no NIF and no openssl binary."
   end
 

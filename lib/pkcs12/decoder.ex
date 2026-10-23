@@ -300,30 +300,36 @@ defmodule PKCS12.Decoder do
     end
   end
 
-  # A PrivateKeyInfo (or OneAsymmetricKey, its successor in RFC 5958):
-  #   SEQUENCE { version INTEGER (0 or 1), privateKeyAlgorithm AlgorithmIdentifier,
-  #              privateKey OCTET STRING, ... }
-  # Checking the shape is enough to tell a decrypted key from garbage, and
-  # works for any key algorithm. The result is DER, in a binary of its own;
-  # a segmented (BER) privateKey is joined on the way.
-  defp private_key_info(bin) when is_binary(bin) do
+  @doc """
+  Checks a PrivateKeyInfo (or OneAsymmetricKey, its successor in RFC 5958):
+
+      SEQUENCE { version INTEGER (0 or 1), privateKeyAlgorithm AlgorithmIdentifier,
+                 privateKey OCTET STRING, ... }
+
+  Checking the shape is enough to tell a decrypted key from garbage, and
+  works for any key algorithm. The result is DER, in a binary of its own; a
+  segmented (BER) privateKey is joined on the way. The encoder checks its
+  input with it too.
+  """
+  @spec private_key_info(binary() | DER.element()) :: {:ok, binary()} | :error
+  def private_key_info(bin) when is_binary(bin) do
     case DER.decode(bin) do
       {:ok, element} -> private_key_info(element)
       {:error, _} -> :error
     end
   end
 
-  defp private_key_info(
-         {0x30, [{0x02, <<v>>} = version, {0x30, [{0x06, _} | _]} = alg, key | rest]}
-       )
-       when v in [0, 1] do
+  def private_key_info(
+        {0x30, [{0x02, <<v>>} = version, {0x30, [{0x06, _} | _]} = alg, key | rest]}
+      )
+      when v in [0, 1] do
     case DER.octets(key, 0x04) do
       {:ok, key} -> {:ok, DER.encode({0x30, [version, alg, {0x04, key} | rest]})}
       {:error, _} -> :error
     end
   end
 
-  defp private_key_info(_element), do: :error
+  def private_key_info(_element), do: :error
 
   # Attributes: SET OF SEQUENCE { attrId OID, attrValues SET OF ANY }
   defp attributes([]), do: {:ok, %{}}

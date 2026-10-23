@@ -4,7 +4,7 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.1.0] - 2026-10-23
 
 ### Added
 
@@ -17,5 +17,11 @@ All notable changes to this project are documented here. The format follows
 - BER input, and the password encodings of tools that differ from RFC 7292.
 - Limits on the key derivation work (`:max_iterations`,
   `:max_total_iterations`) and `verify_mac: false`.
+- `PKCS12.encode/3` and `PKCS12.encode!/3`: write a PKCS#12 file from a key
+  (PrivateKeyInfo in DER, or a key record of `:public_key`), its certificate
+  and other certificates. The `:modern` profile (default) uses AES-256-CBC
+  with PBKDF2-HMAC-SHA-256 and a SHA-256 MAC, with 100,000 iterations; the
+  `:legacy` profile, 3DES and RC2-40 with a SHA-1 MAC. Options choose each
+  algorithm, PBMAC1, the iteration count, `friendlyName` and `localKeyId`.
 
-[Unreleased]: https://github.com/openspb/pkcs12/commits/main
+[0.1.0]: https://github.com/openspb/pkcs12/releases/tag/v0.1.0

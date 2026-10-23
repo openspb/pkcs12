@@ -17,6 +17,10 @@ defmodule PKCS12.MAC do
     OID.encode("2.16.840.1.101.3.4.2.3") => :sha512
   }
 
+  @digest_oids Map.new(@digests, fn {oid, digest} -> {digest, oid} end)
+  @hmac_sha256 OID.encode("1.2.840.113549.2.9")
+  @salt_size 16
+
   # PBMAC1 keys shorter than this are too weak to mean anything, and longer
   # ones only cost more PBKDF2 blocks.
   @pbmac1_key_sizes 20..64
@@ -159,6 +163,59 @@ defmodule PKCS12.MAC do
     # A FIPS provider may refuse some parameters, such as a short password.
     ErlangError -> {:error, {:not_available, :pbkdf2}}
   end
+
+  @doc """
+  Builds the MacData of `data` with a new random salt.
+
+  For PBMAC1 the key comes from PBKDF2 with HMAC-SHA-256, 32 bytes as RFC
+  9879 recommends. The macSalt and iterations of MacData, which PBMAC1
+  ignores, repeat its own, so that older readers find sensible values there.
+  """
+  @spec build(KDF.hash() | :pbmac1, Password.t(), pos_integer(), binary()) ::
+          {:ok, DER.element()} | {:error, {:not_available, :pbkdf2}}
+  def build(:pbmac1, password, iterations, data) do
+    mac = %{
+      scheme: :pbmac1,
+      digest: :sha256,
+      prf: :sha256,
+      iterations: iterations,
+      salt: :crypto.strong_rand_bytes(@salt_size),
+      key_size: 32
+    }
+
+    with {:ok, digest} <- compute(mac, password, data) do
+      hmac = {0x30, [{0x06, @hmac_sha256}, {0x05, <<>>}]}
+
+      kdf =
+        {0x30,
+         [
+           {0x04, mac.salt},
+           DER.integer(iterations),
+           DER.integer(mac.key_size),
+           hmac
+         ]}
+
+      params = {0x30, [{0x30, [{0x06, @pbkdf2}, kdf]}, hmac]}
+      {:ok, mac_data({0x30, [{0x06, @pbmac1}, params]}, digest, mac.salt, iterations)}
+    end
+  end
+
+  def build(digest, password, iterations, data) do
+    mac = %{
+      scheme: :hmac,
+      digest: digest,
+      iterations: iterations,
+      salt: :crypto.strong_rand_bytes(@salt_size),
+      key_size: KDF.hash_size(digest)
+    }
+
+    {:ok, value} = compute(mac, password, data)
+    algorithm = {0x30, [{0x06, Map.fetch!(@digest_oids, digest)}, {0x05, <<>>}]}
+    {:ok, mac_data(algorithm, value, mac.salt, iterations)}
+  end
+
+  defp mac_data(algorithm, digest, salt, iterations),
+    do: {0x30, [{0x30, [algorithm, {0x04, digest}]}, {0x04, salt}, DER.integer(iterations)]}
 
   @doc """
   The parameters that tell what a file uses.

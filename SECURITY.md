@@ -11,7 +11,9 @@ an answer within a week. Fixes are released for the latest minor version.
 
 The library is meant to read files from anyone: a certificate uploaded by a
 user, a file from a partner, a key store found on disk. It assumes the file
-may be hostile and the password may be wrong.
+may be hostile and the password may be wrong. When it writes, the input comes
+from the application and is trusted; the section on writing below covers
+what the written file protects.
 
 ### Malformed input
 
@@ -100,3 +102,25 @@ or revocation. `p12.certificate` is the certificate that belongs to the key
 by `localKeyId` or by public key, and `p12.ca_certificates` is everything
 else, in file order. Validate them as your application requires, for
 example with `:public_key.pkix_path_validation/3`.
+
+### Writing
+
+* The salts (16 bytes) and the IVs come from `:crypto.strong_rand_bytes/1`,
+  the random generator of OpenSSL.
+* The password is all that protects a written file. Anyone who gets the file
+  can try passwords offline, as fast as the key derivation allows. Every
+  derivation in a file uses the same iteration count, because the cheapest
+  one would set the pace. The default is 100,000; use a long random password
+  for files that leave your systems, and a higher count for files that live
+  long.
+* The `:legacy` profile is weak. Its key derivation is SHA-1 with 2,048
+  iterations, so guessing is cheap, and the 40-bit key of RC2-40 can be found
+  without the password, which exposes the certificates (public anyway). Use
+  it only for importers that need it, and keep such files short-lived.
+* `key_encryption: :none` leaves the key readable by anyone with the file,
+  and `mac: :none` leaves the file without integrity protection. They are
+  meant for trust stores and for files protected by other means.
+* The library checks the shape of the key and of the certificates it writes,
+  not that the certificate belongs to the key, nor that it is valid.
+* As when reading, the key and the password are binaries in the memory of
+  the calling process, which the BEAM cannot wipe.

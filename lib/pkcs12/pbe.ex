@@ -4,6 +4,10 @@ defmodule PKCS12.PBE do
   # and PBES2 (RFC 8018). Reading the parameters and decrypting are separate
   # steps, so the decoder can check the iteration counts and its budget
   # before it does any expensive work.
+  #
+  # The encoder writes a subset: PBES2 with AES (PBKDF2 with HMAC-SHA-256),
+  # and the 3DES and RC2-40 ciphers of PKCS#12 for readers that know nothing
+  # newer.
 
   alias PKCS12.{DER, KDF, OID, Password, RC2}
 
@@ -36,6 +40,21 @@ defmodule PKCS12.PBE do
     OID.encode("1.2.840.113549.2.10") => :sha384,
     OID.encode("1.2.840.113549.2.11") => :sha512
   }
+
+  @writable_pkcs12 for {oid, {name, _, _, _} = cipher} <- @pkcs12,
+                       name in [:des_ede3_cbc, :rc2_40_cbc],
+                       into: %{},
+                       do: {name, {oid, cipher}}
+
+  @writable_pbes2 for {oid, {name, _, _} = cipher} <- @pbes2_ciphers,
+                      name in [:aes_128_cbc, :aes_192_cbc, :aes_256_cbc],
+                      into: %{},
+                      do: {name, {oid, cipher}}
+
+  @hmac_sha256 OID.encode("1.2.840.113549.2.9")
+  @salt_size 16
+
+  @type writable :: :aes_128_cbc | :aes_192_cbc | :aes_256_cbc | :des_ede3_cbc | :rc2_40_cbc
 
   @type cipher ::
           :rc4_128
@@ -225,6 +244,83 @@ defmodule PKCS12.PBE do
         result -> result
       end
     end
+  end
+
+  @doc """
+  Encrypts `data` with a new random salt, and IV for PBES2. Returns the
+  AlgorithmIdentifier to write with the ciphertext.
+  """
+  @spec encrypt(writable(), Password.t(), pos_integer(), binary()) ::
+          {:ok, DER.element(), binary()} | {:error, {:not_available, atom()}}
+  def encrypt(cipher, password, iterations, data) do
+    {oid, params} = new_params(cipher, iterations)
+
+    with :ok <- available(params),
+         {:ok, key, iv} <- derive(params, password),
+         {:ok, encrypted} <- encrypt_with(params.impl, key, iv, pad(data, byte_size(iv))) do
+      {:ok, algorithm(oid, params), encrypted}
+    end
+  end
+
+  defp new_params(cipher, iterations) do
+    salt = :crypto.strong_rand_bytes(@salt_size)
+
+    case @writable_pkcs12 do
+      %{^cipher => {oid, {name, impl, key_size, iv_size}}} ->
+        {oid,
+         %{
+           scheme: :pkcs12_pbe,
+           cipher: name,
+           digest: :sha,
+           iterations: iterations,
+           salt: salt,
+           key_size: key_size,
+           iv: {:derive, iv_size},
+           impl: impl
+         }}
+
+      %{} ->
+        {oid, {name, key_size, block}} = Map.fetch!(@writable_pbes2, cipher)
+
+        {oid,
+         %{
+           scheme: :pbes2,
+           cipher: name,
+           digest: :sha256,
+           iterations: iterations,
+           salt: salt,
+           key_size: key_size,
+           iv: :crypto.strong_rand_bytes(block),
+           impl: name
+         }}
+    end
+  end
+
+  # pkcs-12PbeParams, or PBES2-params with PBKDF2-params (no keyLength, as
+  # the cipher fixes it).
+  defp algorithm(oid, %{scheme: :pkcs12_pbe} = params),
+    do: {0x30, [{0x06, oid}, {0x30, [{0x04, params.salt}, DER.integer(params.iterations)]}]}
+
+  defp algorithm(oid, %{scheme: :pbes2} = params) do
+    prf = {0x30, [{0x06, @hmac_sha256}, {0x05, <<>>}]}
+    pbkdf2 = {0x30, [{0x04, params.salt}, DER.integer(params.iterations), prf]}
+    kdf = {0x30, [{0x06, @pbkdf2}, pbkdf2]}
+    {0x30, [{0x06, @pbes2}, {0x30, [kdf, {0x30, [{0x06, oid}, {0x04, params.iv}]}]}]}
+  end
+
+  defp encrypt_with(:rc2, key, iv, data),
+    do: {:ok, RC2.encrypt_cbc(key, byte_size(key) * 8, iv, data)}
+
+  defp encrypt_with(cipher, key, iv, data) do
+    {:ok, :crypto.crypto_one_time(cipher, key, iv, data, true)}
+  rescue
+    ErlangError -> {:error, {:not_available, cipher}}
+  end
+
+  # PKCS#5 padding: always 1 to `block` bytes.
+  defp pad(data, block) do
+    n = block - rem(byte_size(data), block)
+    <<data::binary, :binary.copy(<<n>>, n)::binary>>
   end
 
   defp available(%{impl: :rc2}), do: :ok
