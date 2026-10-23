@@ -79,12 +79,12 @@ defmodule PKCS12 do
 
   ## Passwords
 
-  The password is a UTF-8 binary, or `nil` for none. Some generators encode
-  passwords in other ways: with each byte as a character (non-ASCII
-  passwords in older OpenSSL versions and LibreSSL), or the empty password
-  as no bytes at all. When reading, the library tries those forms too, and
-  the MAC decides which is right; `:info` tells which one matched. When
-  writing, it uses the standard forms only.
+  The password is a UTF-8 binary, or `nil`, which is the same as `""`. Some
+  generators encode passwords in other ways: with each byte as a character
+  (non-ASCII passwords in older OpenSSL versions and LibreSSL), or the empty
+  password as no bytes at all. When reading, the library tries those forms
+  too, and the MAC decides which is right; `:info` tells which one matched.
+  When writing, it uses the standard forms only.
   """
 
   alias PKCS12.{Bag, Decoder, Encoder, Error, Password}
@@ -214,7 +214,11 @@ defmodule PKCS12 do
   @doc """
   Decodes a PKCS#12 file.
 
-  `password` is a binary (UTF-8 text, as typed by the user) or `nil`.
+  `password` is a binary (UTF-8 text, as typed by the user) or `nil`, which
+  is the same as `""`. A password read with `System.get_env/1` is `nil` when
+  the variable is not set, and a file with a password then fails with
+  `:invalid_password`; `System.fetch_env!/1` raises first, with the name of
+  the variable.
 
   ## Options
 
@@ -234,8 +238,9 @@ defmodule PKCS12 do
       whether it was changed; use it only to recover a file you trust.
 
   The work is CPU-bound: a few milliseconds for common files, up to about a
-  second at the default limits. It runs in the calling process, which the
-  BEAM preempts as usual. To read files from untrusted sources, bound their
+  second at the default limits, paid again on every call. Decode a file
+  once, for example at startup, and keep the result. The work runs in the
+  calling process, which the BEAM preempts as usual. To read files from untrusted sources, bound their
   size, lower the limits and consider a timeout around the call.
 
   ## Errors

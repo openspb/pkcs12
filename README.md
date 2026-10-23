@@ -45,6 +45,12 @@ p12.ca_certificates  # the other certificates, in DER, in file order
 p12.info             # the algorithms the file uses
 ```
 
+The time goes to the key derivation that the file asks for, from under a
+millisecond to tens of milliseconds ([Performance](#performance)), and it is
+paid again on every call: decode a file once, for example at startup, and
+keep the result. For files from untrusted sources, see
+[the limits](#files-from-untrusted-sources).
+
 Errors come as `{:error, %PKCS12.Error{reason: reason}}`, and `decode!/3`
 raises them:
 
@@ -218,8 +224,8 @@ JDK) and `test/support/extract_rfc9879.exs` (the RFC 9879 vectors). They are
 committed because CI does not have every generator.
 
 The interop tests (`mix test --only interop`) run the readers they find on
-the system and skip the others; `test/support/interop.ex` lists the
-variables that point to them. CI runs them with OpenSSL 3, Python and a JDK.
+the system and skip the others, as well as a Python `cryptography` older
+than 36; `test/support/interop.ex` lists the variables that point to them. CI runs them with OpenSSL 3, Python and a JDK.
 
 ## References
 
