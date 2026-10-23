@@ -5,7 +5,7 @@ defmodule PKCS12.Interop do
   #   PKCS12_OPENSSL    an OpenSSL binary, 3.0 or later
   #   PKCS12_OPENSSL11  an OpenSSL 1.1.1 binary
   #   PKCS12_LIBRESSL   a LibreSSL binary (the openssl of macOS)
-  #   PKCS12_PYTHON     a Python 3 with the "cryptography" package
+  #   PKCS12_PYTHON     a Python 3 with the "cryptography" package, 36 or later
   #   PKCS12_KEYTOOL    the keytool of a JDK
   #
   # Without the variable, a few usual places are tried. A reader that is not
@@ -14,10 +14,13 @@ defmodule PKCS12.Interop do
 
   @readers [:openssl, :openssl11, :libressl, :python, :keytool]
 
+  # load_pkcs12, which the tests call, came in cryptography 36; without it,
+  # the probe fails and Python counts as not found.
   @python_probe """
   import cryptography
   from cryptography.hazmat.primitives.serialization import pkcs12
   from cryptography.hazmat.backends.openssl.backend import backend
+  pkcs12.load_pkcs12
   print("cryptography", cryptography.__version__, "with", backend.openssl_version_text())
   """
 
